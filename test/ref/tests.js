@@ -13,6 +13,7 @@ var tests = [
   { path: "curve.pde", tags: ["2D"] },
   { path: "continuous-curve.pde", tags: ["2D"] },
   { path: "points-lines.pde", tags: ["2D"] },
+  { path: "line-point-line.pde", tags: ["2D"] },
   { path: "rect-quad.pde", tags: ["2D"] },
   { path: "size-fill-rect.pde", tags: ["2D"] },
   { path: "triangle.pde", tags: ["2D"] },
