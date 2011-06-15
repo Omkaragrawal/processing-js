@@ -12,15 +12,36 @@
 
 (function(window, document, Math, nop, eval_, undef) {
 
-  var debug = (function() {
-    if ("console" in window) {
-      return function(msg) {
-        window.console.log('Processing.js: ' + msg);
-      };
-    } else {
-      return nop();
-    }
+  var log = (function() {
+    var l = window.console ? function(m) { window.console.log(m); } : print || nop;
+
+    return function(msg, funcName) {
+      // If there's a Processing.js function name, include it
+      funcName = funcName ? ' in ' + funcName + ',' : '';
+      var pre = "Processing.js" + funcName + ': ';
+      l(pre + msg);
+    };
   }());
+
+  function warn(m, funcName) {
+    log("Warning: " + m, funcName);
+  }
+
+  function todo(s, funcName) {
+    log("Unimplemented: " + s, funcName);
+  }
+
+  function error(e, funcName) {
+    funcName = funcName ? ' in ' + funcName + ',' : '';
+    var msg = "Processing.js" + funcName + " Error: ";
+    if (e instanceof Error) {
+      e.message = msg + e.message;
+    } else {
+      e = new Error(msg + e);
+    }
+
+    throw e;
+  }
 
   var ajax = function(url) {
     var xhr = new XMLHttpRequest();
@@ -30,8 +51,10 @@
     }
     xhr.setRequestHeader("If-Modified-Since", "Fri, 01 Jan 1960 00:00:00 GMT");
     xhr.send(null);
-    // failed request?
-    if (xhr.status !== 200 && xhr.status !== 0) { throw ("XMLHttpRequest failed, status code " + xhr.status); }
+
+    if (xhr.status !== 200 && xhr.status !== 0) {
+      error(new Error("XMLHttpRequest failed, status code " + xhr.status), "ajax()");
+    }
     return xhr.responseText;
   };
 
@@ -445,7 +468,7 @@
         return obj[index];
       };
     } else {
-      throw "Unable to iterate: " + obj;
+      error(new Error("Unable to iterate: " + obj), "ObjectIterator()");
     }
   };
 
@@ -537,13 +560,13 @@
             if (arg0 >= 0 && arg0 <= array.length) {
               array.splice(arg0, 0, arguments[1]); // for add(i, Object)
             } else {
-              throw(arg0 + " is not a valid index");
+              error(new Error("" + arg0 + " is not a valid index"), "ArrayList.add()");
             }
           } else {
-            throw(typeof arg0 + " is not a number");
+            error(new Error("" + typeof arg0 + " is not a number"), "ArrayList.add()");
           }
         } else {
-          throw("Please use the proper number of parameters.");
+          error(new Error("Incorrect number of arguments to add()."), "ArrayList.add()");
         }
       };
       /**
@@ -564,7 +587,8 @@
         var it;
         if (typeof arg1 === "number") {
           if (arg1 < 0 || arg1 > array.length) {
-            throw("Index out of bounds for addAll: " + arg1 + " greater or equal than " + array.length);
+            error(new Error("Index out of bounds for addAll: " + arg1 + " greater or equal than " + array.length),
+                  "ArrayList.addAll()");
           }
           it = new ObjectIterator(arg2);
           while (it.hasNext()) {
@@ -593,13 +617,13 @@
             if (arg0 >= 0 && arg0 < array.length) {
               array.splice(arg0, 1, arguments[1]);
             } else {
-              throw(arg0 + " is not a valid index.");
+              error(new Error("" + arg0 + " is not a valid index."), "ArrayList.set()");
             }
           } else {
-            throw(typeof arg0 + " is not a number");
+            error(new Error("" + typeof arg0 + " is not a number"), "ArrayList.set()");
           }
         } else {
-          throw("Please use the proper number of parameters.");
+          error(new Error("Incorrect number of arguments to set()."), "ArrayList.set()");
         }
       };
 
@@ -1383,11 +1407,7 @@
   var Processing = this.Processing = function(curElement, aCode) {
     // Previously we allowed calling Processing as a func instead of ctor, but no longer.
     if (!(this instanceof Processing)) {
-      throw("called Processing constructor as if it were a function: missing 'new'.");
-    }
-
-    function unimplemented(s) {
-      Processing.debug('Unimplemented - ' + s);
+      error(new Error("called Processing constructor as if it were a function: missing 'new'."), "Processing()");
     }
 
     // When something new is added to "p." it must also be added to the "names" array.
@@ -2212,14 +2232,14 @@
       curContext.shaderSource(vertexShaderObject, vetexShaderSource);
       curContext.compileShader(vertexShaderObject);
       if (!curContext.getShaderParameter(vertexShaderObject, curContext.COMPILE_STATUS)) {
-        throw curContext.getShaderInfoLog(vertexShaderObject);
+        error(new Error(curContext.getShaderInfoLog(vertexShaderObject)), "createProgramObject()");
       }
 
       var fragmentShaderObject = curContext.createShader(curContext.FRAGMENT_SHADER);
       curContext.shaderSource(fragmentShaderObject, fragmentShaderSource);
       curContext.compileShader(fragmentShaderObject);
       if (!curContext.getShaderParameter(fragmentShaderObject, curContext.COMPILE_STATUS)) {
-        throw curContext.getShaderInfoLog(fragmentShaderObject);
+        error(new Error(curContext.getShaderInfoLog(fragmentShaderObject)), "createProgramObject()");
       }
 
       var programObject = curContext.createProgram();
@@ -2227,7 +2247,7 @@
       curContext.attachShader(programObject, fragmentShaderObject);
       curContext.linkProgram(programObject);
       if (!curContext.getProgramParameter(programObject, curContext.LINK_STATUS)) {
-        throw "Error linking shaders.";
+        error(new Error("Error linking shaders."), "createProgramObject()");
       }
 
       return programObject;
@@ -2976,7 +2996,7 @@
         this.fillOpacity         = 1;
 
         if (this.element.getName() !== "svg") {
-          throw("root is not <svg>, it's <" + this.element.getName() + ">");
+          error(new Error("root is not <svg>, it's <" + this.element.getName() + ">"), "PShapeSVG()");
         }
       }
       else if (arguments.length === 2) {
@@ -3064,9 +3084,7 @@
           this.width  = 1;
           this.height = 1;
 
-          //show warning
-          throw("The width and/or height is not " +
-                "readable in the <svg> tag of this file.");
+          error(new Error("The width and/or height is not readable in the <svg> tag of this file."), "PShapeSVG()");
         }
       }
       this.parseColors(this.element);
@@ -3210,16 +3228,16 @@
         shape.parsePath();
       } else if (name === "radialGradient") {
         //return new RadialGradient(this, elem);
-        unimplemented('PShapeSVG.prototype.parseChild, name = radialGradient');
+        todo('PShapeSVG.prototype.parseChild, name = radialGradient');
       } else if (name === "linearGradient") {
         //return new LinearGradient(this, elem);
-        unimplemented('PShapeSVG.prototype.parseChild, name = linearGradient');
+        todo('PShapeSVG.prototype.parseChild, name = linearGradient');
       } else if (name === "text") {
-        unimplemented('PShapeSVG.prototype.parseChild, name = text');
+        todo('PShapeSVG.prototype.parseChild, name = text');
       } else if (name === "filter") {
-        unimplemented('PShapeSVG.prototype.parseChild, name = filter');
+        todo('PShapeSVG.prototype.parseChild, name = filter');
       } else if (name === "mask") {
-        unimplemented('PShapeSVG.prototype.parseChild, name = mask');
+        todo('PShapeSVG.prototype.parseChild, name = mask');
       } else {
         // ignoring
         nop();
@@ -3595,7 +3613,7 @@
         this.parsePathVertex(x2 + ((cx-x2)*2/3), y2 + ((cy-y2)*2/3));
         this.parsePathVertex(x2, y2);
       } else {
-        throw ("Path must start with M/m");
+        error(new Error("Path must start with M/m"), "PShapeSVG.parsePathQuadto()");
       }
     };
     /**
@@ -3611,7 +3629,7 @@
         this.parsePathVertex(x2, y2);
         this.parsePathVertex(x3, y3);
       } else {
-        throw ("Path must start with M/m");
+        error(new Error("Path must start with M/m"), "PShapeSVG.parsePathCurveto()");
       }
     };
     /**
@@ -3628,7 +3646,7 @@
         // or curContext.lineTo
         this.vertices[this.vertices.length-1]["moveTo"] = false;
       } else {
-        throw ("Path must start with M/m");
+        error(new Error("Path must start with M/m"), "PShapeSVG.parsePathLineto()");
       }
     };
 
@@ -3685,7 +3703,7 @@
             this.vertices.push(verts);
           }
         } else {
-          throw("Error parsing polygon points: odd number of coordinates provided");
+          error(new Error("Error parsing polygon points: odd number of coordinates provided"), "PShapeSVG.parsePoly()");
         }
       }
     };
@@ -4273,11 +4291,11 @@
           if (elements) {
             this.parseChildrenRecursive(null, elements);
           } else {
-            throw ("Error loading document");
+            error(new Error("Error loading document"), "XMLElement()");
           }
           return this;
         } catch(e) {
-          throw(e);
+          error(e, "XMLElement()");
         }
       },
       /**
@@ -4859,7 +4877,8 @@
        */
       setContent: function(content) {
         if (this.children.length>0) {
-          Processing.debug("Tried to set content for XMLElement with children"); }
+          warn("Tried to set content for XMLElement with children", "XMLElement.setContent()");
+        }
         this.content = content;
       },
       /**
@@ -6340,7 +6359,7 @@
         if (dest[j] !== undef) {
           dest[j] = src[i];
         } else {
-          throw "array index out of bounds exception";
+          error(new Error("Array index out of bounds."), "arrayCopy()");
         }
       }
     };
@@ -7464,7 +7483,7 @@
         curTextFont = oldState.curTextFont;
         curTextSize = oldState.curTextSize;
       } else {
-        throw "Too many popStyle() without enough pushStyle()";
+        error(new Error("Too many popStyle() without enough pushStyle()."), "popStyle()");
       }
     };
 
@@ -7694,9 +7713,9 @@
       looping = window.setInterval(function() {
         try {
           p.redraw();
-        } catch(e_loop) {
+        } catch(e) {
           window.clearInterval(looping);
-          throw e_loop;
+          error(e, "loop()");
         }
       }, curMsPerFrame);
       doLoop = true;
@@ -7792,7 +7811,7 @@
           x = arguments[1];
           y = arguments[2];
           if (x < 0 || y < 0 || y >= image.height || x >= image.width) {
-            throw "x and y must be non-negative and less than the dimensions of the image";
+            error(new Error("x and y must be non-negative and less than the dimensions of the image"), "cursor()");
           }
         } else {
           x = image.width >>> 1;
@@ -7969,7 +7988,7 @@
         return values;
       } else {
         if (isNaN(binaryString)) {
-          throw "NaN_Err";
+          error(new Error("NaN_Err"), "unbinary()");
         } else {
           if (arguments.length === 1 || binaryString.length === 8) {
             if (binaryPattern.test(binaryString)) {
@@ -7978,10 +7997,10 @@
               }
               return addUp + "";
             } else {
-              throw "notBinary: the value passed into unbinary was not an 8 bit binary number";
+              error(new Error("The value passed into unbinary was not an 8 bit binary number"), "unbinary()");
             }
           } else {
-            throw "longErr";
+            error(new Error("longErr"), "unbinary()");
           }
         }
       }
@@ -8671,7 +8690,7 @@
         }
         return ret;
       } else {
-        throw "char() may receive only one argument of type int, byte, int[], or byte[].";
+        error(new Error("char() may receive only one argument of type int, byte, int[], or byte[]."), "char()");
       }
     };
 
@@ -8757,7 +8776,7 @@
 
     p.__instanceof = function(obj, type) {
       if (typeof type !== "function") {
-        throw "Function is expected as type argument for instanceof operator";
+        error(new Error("Function is expected as type argument for instanceof operator"), "instanceof");
       }
 
       if (typeof obj === "string") {
@@ -8987,7 +9006,7 @@
       } else {
         var numbers = arguments.length === 1 ? arguments[0] : arguments; // if single argument, array is used
         if (! ("length" in numbers && numbers.length > 0)) {
-          throw "Non-empty array is expected";
+          error(new Error("Non-empty array expected."), "max()");
         }
         var max = numbers[0],
           count = numbers.length;
@@ -9018,7 +9037,7 @@
       } else {
         var numbers = arguments.length === 1 ? arguments[0] : arguments; // if single argument, array is used
         if (! ("length" in numbers && numbers.length > 0)) {
-          throw "Non-empty array is expected";
+          error(new Error("Non-empty array expected."), "min()");
         }
         var min = numbers[0],
           count = numbers.length;
@@ -9571,7 +9590,7 @@
 
       return function size(aWidth, aHeight, aMode) {
         if (size3DCalled) {
-          throw "Multiple calls to size() for 3D renders are not allowed.";
+          error(new Error("Multiple calls to size() for 3D renders are not allowed."), "size()");
         }
         size3DCalled = true;
 
@@ -9603,12 +9622,12 @@
           curContext = getGLContext(curElement);
           canTex = curContext.createTexture(); // texture
           textTex = curContext.createTexture(); // texture
-        } catch(e_size) {
-          Processing.debug(e_size);
+        } catch(e) {
+          error(e, "size()");
         }
 
         if (!curContext) {
-          throw "WebGL context is not supported on this browser.";
+          error(new Error("WebGL context is not supported on this browser."), "size()");
         }
 
         // Set defaults
@@ -9750,7 +9769,7 @@
 
     Drawing3D.prototype.ambientLight = function(r, g, b, x, y, z) {
       if (lightCount === PConstants.MAX_LIGHTS) {
-        throw "can only create " + PConstants.MAX_LIGHTS + " lights";
+        error(new Error("Can only create " + PConstants.MAX_LIGHTS + " lights"), "ambientLight()");
       }
 
       var pos = new PVector(x, y, z);
@@ -9798,7 +9817,7 @@
 
     Drawing3D.prototype.directionalLight = function(r, g, b, nx, ny, nz) {
       if (lightCount === PConstants.MAX_LIGHTS) {
-        throw "can only create " + PConstants.MAX_LIGHTS + " lights";
+        error(new Error("Can only create " + PConstants.MAX_LIGHTS + " lights"), "directionalLight()");
       }
 
       curContext.useProgram(programObject3D);
@@ -9934,7 +9953,7 @@
 
     Drawing3D.prototype.pointLight = function(r, g, b, x, y, z) {
       if (lightCount === PConstants.MAX_LIGHTS) {
-        throw "can only create " + PConstants.MAX_LIGHTS + " lights";
+        error(new Error("Can only create " + PConstants.MAX_LIGHTS + " lights"), "pointLight()");
       }
 
       // place the point in view space once instead of once per vertex
@@ -10003,7 +10022,7 @@
 
     Drawing3D.prototype.spotLight = function(r, g, b, x, y, z, nx, ny, nz, angle, concentration) {
       if (lightCount === PConstants.MAX_LIGHTS) {
-        throw "can only create " + PConstants.MAX_LIGHTS + " lights";
+        error(new Error("Can only create " + PConstants.MAX_LIGHTS + " lights"), "spotLight()");
       }
 
       curContext.useProgram(programObject3D);
@@ -10063,12 +10082,12 @@
      */
     p.beginCamera = function() {
       if (manipulatingCamera) {
-        throw ("You cannot call beginCamera() again before calling endCamera()");
-      } else {
-        manipulatingCamera = true;
-        forwardTransform = cameraInv;
-        reverseTransform = cam;
+        error(new Error("Cannot call beginCamera() again before calling endCamera()."), "beginCamera()");
       }
+
+      manipulatingCamera = true;
+      forwardTransform = cameraInv;
+      reverseTransform = cam;
     };
 
     /**
@@ -10079,14 +10098,14 @@
      */
     p.endCamera = function() {
       if (!manipulatingCamera) {
-        throw ("You cannot call endCamera() before calling beginCamera()");
-      } else {
-        modelView.set(cam);
-        modelViewInv.set(cameraInv);
-        forwardTransform = modelView;
-        reverseTransform = modelViewInv;
-        manipulatingCamera = false;
+        error(new Error("Cannot call endCamera() before calling beginCamera()."), "endCamera()");
       }
+
+      modelView.set(cam);
+      modelViewInv.set(cameraInv);
+      forwardTransform = modelView;
+      reverseTransform = modelViewInv;
+      manipulatingCamera = false;
     };
 
     /**
@@ -12301,7 +12320,7 @@
       isBezier = true;
       var vert = [];
       if (firstVert) {
-        throw ("vertex() must be used at least once before calling bezierVertex()");
+        error(new Error("vertex() must be used at least once before calling bezierVertex()"), "bezierVertex()");
       }
 
       for (var i = 0; i < arguments.length; i++) {
@@ -12315,7 +12334,7 @@
       isBezier = true;
       var vert = [];
       if (firstVert) {
-        throw ("vertex() must be used at least once before calling bezierVertex()");
+        error(new Error("vertex() must be used at least once before calling bezierVertex()"), "bezierVertex()");
       }
 
       if (arguments.length === 9) {
@@ -12695,7 +12714,7 @@
         imageModeConvert = imageModeCenter;
         break;
       default:
-        throw "Invalid imageMode";
+        error(new Error("Invalid imageMode - " + mode), "imageMode()");
       }
     };
 
@@ -12931,7 +12950,7 @@
      */
     Drawing2D.prototype.bezier = function() {
       if (arguments.length !== 8) {
-        throw("You must use 8 parameters for bezier() in 2D mode");
+        error(new Error("bezier() requires 8 parameters in 2D mode"), "bezier()");
       }
 
       p.beginShape();
@@ -12944,7 +12963,7 @@
 
     Drawing3D.prototype.bezier = function() {
       if (arguments.length !== 12) {
-        throw("You must use 12 parameters for bezier() in 3D mode");
+        error(new Error("bezier() requires 12 parameters in 3D mode"), "bezier()");
       }
 
       p.beginShape();
@@ -13376,7 +13395,7 @@
     */
     p.normal = function(nx, ny, nz) {
       if (arguments.length !== 3 || !(typeof nx === "number" && typeof ny === "number" && typeof nz === "number")) {
-        throw "normal() requires three numeric arguments.";
+        error(new Error("normal() requires 3 numeric arguments."), "normal()");
       }
 
       normalX = nx;
@@ -13656,22 +13675,22 @@
       */
       this.resize = function(w, h) {
         if (this.isRemote) { // Remote images cannot access imageData
-          throw "Image is loaded remotely. Cannot resize.";
-        } else {
-          if (this.width !== 0 || this.height !== 0) {
-            // make aspect ratio if w or h is 0
-            if (w === 0 && h !== 0) {
-              w = Math.floor(this.width / this.height * h);
-            } else if (h === 0 && w !== 0) {
-              h = Math.floor(this.height / this.width * w);
-            }
-            // put 'this.imageData' into a new canvas
-            var canvas = getCanvasData(this.imageData).canvas;
-            // pull imageData object out of canvas into ImageData object
-            var imageData = getCanvasData(canvas, w, h).context.getImageData(0, 0, w, h);
-            // set this as new pimage
-            this.fromImageData(imageData);
+          error(new Error("Image is loaded remotely. Cannot resize."), "resize()");
+        }
+
+        if (this.width !== 0 || this.height !== 0) {
+          // make aspect ratio if w or h is 0
+          if (w === 0 && h !== 0) {
+            w = Math.floor(this.width / this.height * h);
+          } else if (h === 0 && w !== 0) {
+            h = Math.floor(this.height / this.width * w);
           }
+          // put 'this.imageData' into a new canvas
+          var canvas = getCanvasData(this.imageData).canvas;
+          // pull imageData object out of canvas into ImageData object
+          var imageData = getCanvasData(canvas, w, h).context.getImageData(0, 0, w, h);
+          // set this as new pimage
+          this.fromImageData(imageData);
         }
       };
 
@@ -13697,7 +13716,7 @@
           if (mask.width === this.width && mask.height === this.height) {
             this.__mask = mask;
           } else {
-            throw "mask must have the same dimensions as PImage.";
+            error(new Error("Mask must have the same dimensions as PImage."), "mask()");
           }
         } else if (mask instanceof Array) { // this is a pixel array
           // mask pixel array needs to be the same length as this.pixels
@@ -13706,7 +13725,7 @@
           if (this.pixels.length === mask.length) {
             this.__mask = mask;
           } else {
-            throw "mask array must be the same length as PImage pixels array.";
+            error(new Error("Mask array must be the same length as PImage pixels array."), "mask()");
           }
         }
       };
@@ -13717,44 +13736,40 @@
       this.pixels = {
         getLength: (function(aImg) {
           if (aImg.isRemote) { // Remote images cannot access imageData
-            throw "Image is loaded remotely. Cannot get length.";
-          } else {
-            return function() {
-              return aImg.imageData.data.length ? aImg.imageData.data.length/4 : 0;
-            };
+            error(new Error("Image is loaded remotely. Cannot get length."), "pixels.length");
           }
+          return function() {
+            return aImg.imageData.data.length ? aImg.imageData.data.length/4 : 0;
+          };
         }(this)),
         getPixel: (function(aImg) {
           if (aImg.isRemote) { // Remote images cannot access imageData
-            throw "Image is loaded remotely. Cannot get pixels.";
-          } else {
-            return function(i) {
-              var offset = i*4;
-              return p.color.toInt(aImg.imageData.data[offset], aImg.imageData.data[offset+1],
-                                   aImg.imageData.data[offset+2], aImg.imageData.data[offset+3]);
-            };
+            error(new Error("Image is loaded remotely. Cannot get pixels."), "pixel[]");
           }
+          return function(i) {
+            var offset = i*4;
+            return p.color.toInt(aImg.imageData.data[offset], aImg.imageData.data[offset+1],
+                                 aImg.imageData.data[offset+2], aImg.imageData.data[offset+3]);
+          };
         }(this)),
         setPixel: (function(aImg) {
           if (aImg.isRemote) { // Remote images cannot access imageData
-            throw "Image is loaded remotely. Cannot set pixel.";
-          } else {
-            return function(i,c) {
-              var offset = i*4;
-              aImg.imageData.data[offset+0] = (c & PConstants.RED_MASK) >>> 16;
-              aImg.imageData.data[offset+1] = (c & PConstants.GREEN_MASK) >>> 8;
-              aImg.imageData.data[offset+2] = (c & PConstants.BLUE_MASK);
-              aImg.imageData.data[offset+3] = (c & PConstants.ALPHA_MASK) >>> 24;
-            };
+            error(new Error("Image is loaded remotely. Cannot set pixel."), "pixel[]");
           }
+          return function(i,c) {
+            var offset = i*4;
+            aImg.imageData.data[offset+0] = (c & PConstants.RED_MASK) >>> 16;
+            aImg.imageData.data[offset+1] = (c & PConstants.GREEN_MASK) >>> 8;
+            aImg.imageData.data[offset+2] = (c & PConstants.BLUE_MASK);
+            aImg.imageData.data[offset+3] = (c & PConstants.ALPHA_MASK) >>> 24;
+          };
         }(this)),
         set: function(arr) {
           if (this.isRemote) { // Remote images cannot access imageData
-            throw "Image is loaded remotely. Cannot set pixels.";
-          } else {
-            for (var i = 0, aL = arr.length; i < aL; i++) {
-              this.setPixel(i, arr[i]);
-            }
+            error(new Error("Image is loaded remotely. Cannot set pixels."), "pixels[]");
+          }
+          for (var i = 0, aL = arr.length; i < aL; i++) {
+            this.setPixel(i, arr[i]);
           }
         }
       };
@@ -13794,11 +13809,10 @@
 
       this.toDataURL = function() {
         if (this.isRemote) { // Remote images cannot access imageData
-          throw "Image is loaded remotely. Cannot create dataURI.";
-        } else {
-          var canvasData = getCanvasData(this.imageData);
-          return canvasData.canvas.toDataURL();
+          error(new Error("Image is loaded remotely. Cannot create dataURI."), "PImage.toDataURL()");
         }
+        var canvasData = getCanvasData(this.imageData);
+        return canvasData.canvas.toDataURL();
       };
 
       this.fromImageData = function(canvasImg) {
@@ -13988,16 +14002,15 @@
     }
     function get$3(x,y,img) {
       if (img.isRemote) { // Remote images cannot access imageData
-        throw "Image is loaded remotely. Cannot get x,y.";
-      } else {
-        // PImage.get(x,y) was called, return the color (int) at x,y of img
-        // changed in 0.9
-        var offset = y * img.width * 4 + (x * 4);
-        return p.color.toInt(img.imageData.data[offset],
+        error(new Error("Image is loaded remotely. Cannot get x,y."), "PImage.get()");
+      }
+      // PImage.get(x,y) was called, return the color (int) at x,y of img
+      // changed in 0.9
+      var offset = y * img.width * 4 + (x * 4);
+      return p.color.toInt(img.imageData.data[offset],
                            img.imageData.data[offset + 1],
                            img.imageData.data[offset + 2],
                            img.imageData.data[offset + 3]);
-      }
     }
     function get$4(x, y, w, h) {
       // return a PImage of w and h from cood x,y of curContext
@@ -14007,27 +14020,26 @@
     }
     function get$5(x, y, w, h, img) {
       if (img.isRemote) { // Remote images cannot access imageData
-        throw "Image is loaded remotely. Cannot get x,y,w,h.";
-      } else {
-        // PImage.get(x,y,w,h) was called, return x,y,w,h PImage of img
-        // changed for 0.9, offset start point needs to be *4
-        var c = new PImage(w, h, PConstants.RGB), cData = c.imageData.data,
-          imgWidth = img.width, imgHeight = img.height, imgData = img.imageData.data;
-        // Don't need to copy pixels from the image outside ranges.
-        var startRow = Math.max(0, -y), startColumn = Math.max(0, -x),
-          stopRow = Math.min(h, imgHeight - y), stopColumn = Math.min(w, imgWidth - x);
-        for (var i = startRow; i < stopRow; ++i) {
-          var sourceOffset = ((y + i) * imgWidth + (x + startColumn)) * 4;
-          var targetOffset = (i * w + startColumn) * 4;
-          for (var j = startColumn; j < stopColumn; ++j) {
-            cData[targetOffset++] = imgData[sourceOffset++];
-            cData[targetOffset++] = imgData[sourceOffset++];
-            cData[targetOffset++] = imgData[sourceOffset++];
-            cData[targetOffset++] = imgData[sourceOffset++];
-          }
-        }
-        return c;
+        error(new Error("Image is loaded remotely. Cannot get x,y,w,h."), "PImage.get()");
       }
+      // PImage.get(x,y,w,h) was called, return x,y,w,h PImage of img
+      // changed for 0.9, offset start point needs to be *4
+      var c = new PImage(w, h, PConstants.RGB), cData = c.imageData.data,
+        imgWidth = img.width, imgHeight = img.height, imgData = img.imageData.data;
+      // Don't need to copy pixels from the image outside ranges.
+      var startRow = Math.max(0, -y), startColumn = Math.max(0, -x),
+        stopRow = Math.min(h, imgHeight - y), stopColumn = Math.min(w, imgWidth - x);
+      for (var i = startRow; i < stopRow; ++i) {
+        var sourceOffset = ((y + i) * imgWidth + (x + startColumn)) * 4;
+        var targetOffset = (i * w + startColumn) * 4;
+        for (var j = startColumn; j < stopColumn; ++j) {
+          cData[targetOffset++] = imgData[sourceOffset++];
+          cData[targetOffset++] = imgData[sourceOffset++];
+          cData[targetOffset++] = imgData[sourceOffset++];
+          cData[targetOffset++] = imgData[sourceOffset++];
+        }
+      }
+      return c;
     }
 
     // Gets a single pixel or block of pixels from the current Canvas Context or a PImage
@@ -14153,16 +14165,15 @@
     }
     function set$4(x, y, obj, img) {
       if (img.isRemote) { // Remote images cannot access imageData
-        throw "Image is loaded remotely. Cannot set x,y.";
-      } else {
-        var c = p.color.toArray(obj);
-        var offset = y * img.width * 4 + (x*4);
-        var data = img.imageData.data;
-        data[offset] = c[0];
-        data[offset+1] = c[1];
-        data[offset+2] = c[2];
-        data[offset+3] = c[3];
+        error(new Error("Image is loaded remotely. Cannot set x,y."), "PImage.set()");
       }
+      var c = p.color.toArray(obj);
+      var offset = y * img.width * 4 + (x*4);
+      var data = img.imageData.data;
+      data[offset] = c[0];
+      data[offset+1] = c[1];
+      data[offset+2] = c[2];
+      data[offset+3] = c[3];
     }
 
     // Paints a pixel array into the canvas
@@ -14362,24 +14373,24 @@
      */
     DrawingShared.prototype.background = function() {
       var obj;
-      
+
       if (arguments[0] instanceof PImage) {
         obj = arguments[0];
 
         if (!obj.loaded) {
-          throw "Error using image in background(): PImage not loaded.";
+          error(new Error("Error using image in background(): PImage not loaded."), "background()");
         } else if(obj.width !== p.width || obj.height !== p.height){
-          throw "Background image must be the same dimensions as the canvas.";
+          error(new Error("Background image must be the same dimensions as the canvas."), "background()");
         }
       } else {
         obj = p.color.apply(this, arguments);
-        
+
         // override alpha value, processing ignores the alpha for background color
         if (!curSketch.options.isTransparent) {
           obj = obj | PConstants.ALPHA_MASK;
         }
       }
-      
+
       backgroundObj = obj;
     };
 
@@ -14651,30 +14662,29 @@
       var dy2 = dy + dh;
       var dest;
       if (src.isRemote) { // Remote images cannot access imageData
-        throw "Image is loaded remotely. Cannot blend image.";
-      } else {
-        // check if pimgdest is there and pixels, if so this was a call from pimg.blend
-        if (arguments.length === 10 || arguments.length === 9) {
-          p.loadPixels();
-          dest = p;
-        } else if (arguments.length === 11 && pimgdest && pimgdest.imageData) {
-          dest = pimgdest;
-        }
-        if (src === p) {
-          if (p.intersect(sx, sy, sx2, sy2, dx, dy, dx2, dy2)) {
-            p.blit_resize(p.get(sx, sy, sx2 - sx, sy2 - sy), 0, 0, sx2 - sx - 1, sy2 - sy - 1,
-                          dest.imageData.data, dest.width, dest.height, dx, dy, dx2, dy2, mode);
-          } else {
-            // same as below, except skip the loadPixels() because it'd be redundant
-            p.blit_resize(src, sx, sy, sx2, sy2, dest.imageData.data, dest.width, dest.height, dx, dy, dx2, dy2, mode);
-          }
+        error(new Error("Image is loaded remotely. Cannot blend image."), "blend()");
+      }
+      // check if pimgdest is there and pixels, if so this was a call from pimg.blend
+      if (arguments.length === 10 || arguments.length === 9) {
+        p.loadPixels();
+        dest = p;
+      } else if (arguments.length === 11 && pimgdest && pimgdest.imageData) {
+        dest = pimgdest;
+      }
+      if (src === p) {
+        if (p.intersect(sx, sy, sx2, sy2, dx, dy, dx2, dy2)) {
+          p.blit_resize(p.get(sx, sy, sx2 - sx, sy2 - sy), 0, 0, sx2 - sx - 1, sy2 - sy - 1,
+                        dest.imageData.data, dest.width, dest.height, dx, dy, dx2, dy2, mode);
         } else {
-          src.loadPixels();
+          // same as below, except skip the loadPixels() because it'd be redundant
           p.blit_resize(src, sx, sy, sx2, sy2, dest.imageData.data, dest.width, dest.height, dx, dy, dx2, dy2, mode);
         }
-        if (arguments.length === 10) {
-          p.updatePixels();
-        }
+      } else {
+        src.loadPixels();
+        p.blit_resize(src, sx, sy, sx2, sy2, dest.imageData.data, dest.width, dest.height, dx, dy, dx2, dy2, mode);
+      }
+      if (arguments.length === 10) {
+        p.updatePixels();
       }
     };
 
@@ -14955,90 +14965,90 @@
         param = null;
       }
       if (img.isRemote) { // Remote images cannot access imageData
-        throw "Image is loaded remotely. Cannot filter image.";
-      } else {
-        // begin filter process
-        var imglen = img.pixels.getLength();
-        switch (kind) {
-          case PConstants.BLUR:
-            var radius = param || 1; // if no param specified, use 1 (default for p5)
-            blurARGB(radius, img);
-            break;
+        error(new Error("Image is loaded remotely. Cannot filter image."), "filter()");
+      }
 
-          case PConstants.GRAY:
-            if (img.format === PConstants.ALPHA) { //trouble
-              // for an alpha image, convert it to an opaque grayscale
-              for (i = 0; i < imglen; i++) {
-                col = 255 - img.pixels.getPixel(i);
-                img.pixels.setPixel(i,(0xff000000 | (col << 16) | (col << 8) | col));
-              }
-              img.format = PConstants.RGB; //trouble
-            } else {
-              for (i = 0; i < imglen; i++) {
-                col = img.pixels.getPixel(i);
-                lum = (77*(col>>16&0xff) + 151*(col>>8&0xff) + 28*(col&0xff))>>8;
-                img.pixels.setPixel(i,((col & PConstants.ALPHA_MASK) | lum<<16 | lum<<8 | lum));
-              }
-            }
-            break;
+      // begin filter process
+      var imglen = img.pixels.getLength();
+      switch (kind) {
+        case PConstants.BLUR:
+          var radius = param || 1; // if no param specified, use 1 (default for p5)
+          blurARGB(radius, img);
+          break;
 
-          case PConstants.INVERT:
+        case PConstants.GRAY:
+          if (img.format === PConstants.ALPHA) { //trouble
+            // for an alpha image, convert it to an opaque grayscale
             for (i = 0; i < imglen; i++) {
-              img.pixels.setPixel(i, (img.pixels.getPixel(i) ^ 0xffffff));
-            }
-            break;
-
-          case PConstants.POSTERIZE:
-            if (param === null) {
-              throw "Use filter(POSTERIZE, int levels) instead of filter(POSTERIZE)";
-            }
-            var levels = p.floor(param);
-            if ((levels < 2) || (levels > 255)) {
-              throw "Levels must be between 2 and 255 for filter(POSTERIZE, levels)";
-            }
-            var levels1 = levels - 1;
-            for (i = 0; i < imglen; i++) {
-              var rlevel = (img.pixels.getPixel(i) >> 16) & 0xff;
-              var glevel = (img.pixels.getPixel(i) >> 8) & 0xff;
-              var blevel = img.pixels.getPixel(i) & 0xff;
-              rlevel = (((rlevel * levels) >> 8) * 255) / levels1;
-              glevel = (((glevel * levels) >> 8) * 255) / levels1;
-              blevel = (((blevel * levels) >> 8) * 255) / levels1;
-              img.pixels.setPixel(i, ((0xff000000 & img.pixels.getPixel(i)) | (rlevel << 16) | (glevel << 8) | blevel));
-            }
-            break;
-
-          case PConstants.OPAQUE:
-            for (i = 0; i < imglen; i++) {
-              img.pixels.setPixel(i, (img.pixels.getPixel(i) | 0xff000000));
+              col = 255 - img.pixels.getPixel(i);
+              img.pixels.setPixel(i,(0xff000000 | (col << 16) | (col << 8) | col));
             }
             img.format = PConstants.RGB; //trouble
-            break;
-
-          case PConstants.THRESHOLD:
-            if (param === null) {
-              param = 0.5;
-            }
-            if ((param < 0) || (param > 1)) {
-              throw "Level must be between 0 and 1 for filter(THRESHOLD, level)";
-            }
-            var thresh = p.floor(param * 255);
+          } else {
             for (i = 0; i < imglen; i++) {
-              var max = p.max((img.pixels.getPixel(i) & PConstants.RED_MASK) >> 16, p.max((img.pixels.getPixel(i) & PConstants.GREEN_MASK) >> 8, (img.pixels.getPixel(i) & PConstants.BLUE_MASK)));
-              img.pixels.setPixel(i, ((img.pixels.getPixel(i) & PConstants.ALPHA_MASK) | ((max < thresh) ? 0x000000 : 0xffffff)));
+              col = img.pixels.getPixel(i);
+              lum = (77*(col>>16&0xff) + 151*(col>>8&0xff) + 28*(col&0xff))>>8;
+              img.pixels.setPixel(i,((col & PConstants.ALPHA_MASK) | lum<<16 | lum<<8 | lum));
             }
-            break;
+          }
+          break;
 
-          case PConstants.ERODE:
-            dilate(true, img);
-            break;
+        case PConstants.INVERT:
+          for (i = 0; i < imglen; i++) {
+            img.pixels.setPixel(i, (img.pixels.getPixel(i) ^ 0xffffff));
+          }
+          break;
 
-          case PConstants.DILATE:
-            dilate(false, img);
-            break;
-        }
-        img.updatePixels();
+        case PConstants.POSTERIZE:
+          if (param === null) {
+            error(new Error("Use filter(POSTERIZE, int levels) instead of filter(POSTERIZE)"), "filter()");
+          }
+          var levels = p.floor(param);
+          if ((levels < 2) || (levels > 255)) {
+            error(new Error("Levels must be between 2 and 255 for filter(POSTERIZE, levels)"), "filter()");
+          }
+          var levels1 = levels - 1;
+          for (i = 0; i < imglen; i++) {
+            var rlevel = (img.pixels.getPixel(i) >> 16) & 0xff;
+            var glevel = (img.pixels.getPixel(i) >> 8) & 0xff;
+            var blevel = img.pixels.getPixel(i) & 0xff;
+            rlevel = (((rlevel * levels) >> 8) * 255) / levels1;
+            glevel = (((glevel * levels) >> 8) * 255) / levels1;
+            blevel = (((blevel * levels) >> 8) * 255) / levels1;
+            img.pixels.setPixel(i, ((0xff000000 & img.pixels.getPixel(i)) | (rlevel << 16) | (glevel << 8) | blevel));
+          }
+          break;
+
+        case PConstants.OPAQUE:
+          for (i = 0; i < imglen; i++) {
+            img.pixels.setPixel(i, (img.pixels.getPixel(i) | 0xff000000));
+          }
+          img.format = PConstants.RGB; //trouble
+          break;
+
+        case PConstants.THRESHOLD:
+          if (param === null) {
+            param = 0.5;
+          }
+          if ((param < 0) || (param > 1)) {
+            error(new Error("Level must be between 0 and 1 for filter(THRESHOLD, level)"), "filter()");
+          }
+          var thresh = p.floor(param * 255);
+          for (i = 0; i < imglen; i++) {
+            var max = p.max((img.pixels.getPixel(i) & PConstants.RED_MASK) >> 16, p.max((img.pixels.getPixel(i) & PConstants.GREEN_MASK) >> 8, (img.pixels.getPixel(i) & PConstants.BLUE_MASK)));
+            img.pixels.setPixel(i, ((img.pixels.getPixel(i) & PConstants.ALPHA_MASK) | ((max < thresh) ? 0x000000 : 0xffffff)));
+          }
+          break;
+
+        case PConstants.ERODE:
+          dilate(true, img);
+          break;
+
+        case PConstants.DILATE:
+          dilate(false, img);
+          break;
       }
+      img.updatePixels();
     };
 
 
@@ -15598,7 +15608,7 @@
                 width += parseFloat(p.glyphLook(p.glyphTable[name], str[i]).horiz_adv_x);
               }
               catch(e) {
-                Processing.debug(e);
+                error(e, "loadFont()");
               }
             }
             return width / p.glyphTable[name].units_per_em;
@@ -15635,7 +15645,7 @@
         p.textSize(size);
         return p.loadFont(name);
       } else {
-        throw("incorrent number of parameters for createFont");
+        error(new Error("Incorrent number of parameters for createFont."), "createFont()");
       }
     };
 
@@ -15979,7 +15989,7 @@
           return font[chr];
         }
       } catch(e) {
-        Processing.debug(e);
+        error(e, "glyphLookup()");
       }
     };
 
@@ -16034,7 +16044,7 @@
           try {
             p.glyphLook(font, str[i]).draw();
           } catch(e) {
-            Processing.debug(e);
+            error(e, "text()");
           }
         }
         restoreContext();
@@ -16470,9 +16480,8 @@
         try {
           xmlDoc = document.implementation.createDocument("", "", null);
         }
-        catch(e_fx_op) {
-          Processing.debug(e_fx_op.message);
-          return;
+        catch(e) {
+          error(e, "loadXML()");
         }
 
         try {
@@ -16482,15 +16491,15 @@
         }
         catch(e_sf_ch) {
           // Google Chrome, Safari etc.
-          Processing.debug(e_sf_ch);
+          warn(e_sf_ch.message, "loadXML()");
           try {
             var xmlhttp = new window.XMLHttpRequest();
             xmlhttp.open("GET", url, false);
             xmlhttp.send(null);
             parseSVGFont(xmlhttp.responseXML.documentElement);
           }
-          catch(e) {
-            Processing.debug(e_sf_ch);
+          catch(ex) {
+            error(e_sf_ch, "loadXML()");
           }
         }
       };
@@ -17149,7 +17158,7 @@
         // Compile the code
         curSketch = Processing.compile(aCode);
 //#else
-//      throw "PJS compile is not supported";
+//      error(new Error("Processing.js compile is not supported"), "Processing()");
 //#endif
       }
 
@@ -17292,9 +17301,6 @@
       };
     }
   }; // Processing() ends
-
-  // Place-holder for overridable debugging function
-  Processing.debug = debug;
 
   Processing.prototype = defaultScope;
 
@@ -19382,7 +19388,7 @@
         func(processing);
         this.attachFunction = func;
       } else {
-        throw "Unable to attach sketch to the processing instance";
+        error(new Error("Unable to attach sketch to the processing instance."), "Processing()");
       }
     };
 //#if PARSER
