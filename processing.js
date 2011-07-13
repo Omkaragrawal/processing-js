@@ -9483,19 +9483,22 @@
         noiseProfile.generator = new PerlinNoise(noiseProfile.seed);
       }
       var generator = noiseProfile.generator;
-      var effect = 1, k = 1, sum = 0;
-      for(var i=0; i<noiseProfile.octaves; ++i) {
+      var effect = 1, k = 1, sum = 0, al = arguments.length, f;
+
+      if (al === 1) {
+        f = function(k, effect) { return effect * (1 + generator.noise1d(k*x))/2; };
+      } else if (al === 2) {
+        f = function(k, effect) { return effect * (1 + generator.noise2d(k*x, k*y))/2; };
+      } else if (al === 3) {
+        f = function(k, effect) { return effect * (1 + generator.noise3d(k*x, k*y, k*z))/2; };
+      }
+
+      for (var i=0, o = noiseProfile.octaves; i < o; ++i) {
         effect *= noiseProfile.fallout;
-        switch (arguments.length) {
-        case 1:
-          sum += effect * (1 + generator.noise1d(k*x))/2; break;
-        case 2:
-          sum += effect * (1 + generator.noise2d(k*x, k*y))/2; break;
-        case 3:
-          sum += effect * (1 + generator.noise3d(k*x, k*y, k*z))/2; break;
-        }
+        sum += f(k, effect);
         k *= 2;
       }
+
       return sum;
     };
 
