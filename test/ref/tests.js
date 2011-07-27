@@ -211,5 +211,7 @@ var tests = [
   { path: "blendcolor-darkest.pde", tags: ["2D", "BLEND"] },
   { path: "blendcolor-hard_light.pde", tags: ["2D", "BLEND"] },
   { path: "blendcolor-screen.pde", tags: ["2D", "BLEND"] },
-  { path: "pixels-toarray.pde", tags: ["2D"] }
+  { path: "pixels-toarray.pde", tags: ["2D"] },
+  { path: "resize-2d.pde", tags: ["2D"] },
+  { path: "resize-3d.pde", tags: ["3D"] }
 ];

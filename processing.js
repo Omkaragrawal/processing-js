@@ -1604,6 +1604,7 @@
 
     // "Private" variables used to maintain state
     var curContext,
+        contextId, // context id string used by size (e.g., '2d' or 'webgl')
         curSketch,
         drawing, // hold a Drawing2D or Drawing3D object
         online = true,
@@ -9865,7 +9866,8 @@
     Drawing2D.prototype.size = function(aWidth, aHeight, aMode) {
       if (curContext === undef) {
         // size() was called without p.init() default context, i.e. p.createGraphics()
-        curContext = curElement.getContext("2d");
+        contextId = '2d';
+        curContext = curElement.getContext(contextId);
         userMatrixStack = new PMatrixStack();
         userReverseMatrixStack = new PMatrixStack();
         forwardTransform = new PMatrix2D();
@@ -9893,6 +9895,7 @@
           for (var i=0, l=ctxNames.length; i<l; i++) {
             gl = canvas.getContext(ctxNames[i]);
             if (gl) {
+              contextId = ctxNames[i];
               break;
             }
           }
@@ -10026,6 +10029,38 @@
         DrawingShared.prototype.size.apply(this, arguments);
       };
     }());
+
+    /**
+     * [P5 supported, but undocumented]
+     * Redefines the dimension of the display window in units of pixels. The resize() function must
+     * be called after size(), and assumes a width and height greater than or equal to 0 pixels.  If
+     * you specify a width or height less than 0, 0 will be used instead.
+     *
+     * @param {int} aWidth     new width of the display window in units of pixels
+     * @param {int} aHeight    new height of the display window in units of pixels
+     *
+     * @see size
+     * @see createGraphics
+     * @see screen
+     */
+    function resizeCanvas(aWidth, aHeight) {
+      aWidth = aWidth < 0 ? 0 : aWidth;
+      aHeight = aHeight < 0 ? 0 : aHeight;
+      p.width = aWidth;
+      p.height = aHeight;
+      curElement.width = aWidth;
+      curElement.height = aHeight;
+      curContext = curElement.getContext(contextId);
+    }
+
+    Drawing3D.prototype.resize = function(aWidth, aHeight) {
+      resizeCanvas(aWidth, aHeight);
+      curContext.viewport(0, 0, curElement.width, curElement.height);
+    };
+
+    Drawing2D.prototype.resize = function(aWidth, aHeight) {
+      resizeCanvas(aWidth, aHeight);
+    };
 
     ////////////////////////////////////////////////////////////////////////////
     // Lights
@@ -16568,6 +16603,7 @@
     DrawingPre.prototype.text$line = createDrawingPreFunction("text$line");
     DrawingPre.prototype.$ensureContext = createDrawingPreFunction("$ensureContext");
     DrawingPre.prototype.$newPMatrix = createDrawingPreFunction("$newPMatrix");
+    DrawingPre.prototype.resize = createDrawingPreFunction("resize");
 
     DrawingPre.prototype.size = function(aWidth, aHeight, aMode) {
       wireDimensionalFunctions(aMode === PConstants.WEBGL ? "3D" : "2D");
@@ -17228,7 +17264,7 @@
       "__equalsIgnoreCase", "__frameRate", "__hashCode", "__int_cast",
       "__instanceof", "__keyPressed", "__mousePressed", "__printStackTrace",
       "__replace", "__replaceAll", "__replaceFirst", "__toCharArray", "__split",
-      "__codePointAt", "__startsWith", "__endsWith"];
+      "__codePointAt", "__startsWith", "__endsWith", "resize"];
 
     var members = {};
     var i, l;
