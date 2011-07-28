@@ -65,5 +65,7 @@ var tests = [
   { path: "pvector-mag.pde", tags: ["2D", "PVector"] },
   { path: "pvector-mult.pde", tags: ["2D", "PVector"] },
   { path: "pvector-normalize.pde", tags: ["2D", "PVector"] },
-  { path: "plants.pde", tags: ["2D"] }
+  { path: "plants.pde", tags: ["2D"] },
+  { path: "line-notcrisp.pde", tags: ["2D"] },
+  { path: "line-crisp.pde", tags: ["2D"] }
 ];
