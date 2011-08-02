@@ -3029,41 +3029,32 @@
        * @see PMatrix2D#apply
        * @see PMatrix3D#apply
        */
-      applyMatrix: function(matrix) {
-        if (arguments.length === 1) {
-          this.applyMatrix(matrix.elements[0],
-                           matrix.elements[1], 0,
-                           matrix.elements[2],
-                           matrix.elements[3],
-                           matrix.elements[4], 0,
-                           matrix.elements[5],
-                           0, 0, 1, 0,
-                           0, 0, 0, 1);
-        } else if (arguments.length === 6) {
-          this.checkMatrix(2);
-          this.matrix.apply(arguments[0], arguments[1], arguments[2], 0,
-                            arguments[3], arguments[4], arguments[5], 0,
-                            0,   0,   1,   0,
-                            0,   0,   0,   1);
+      applyMatrix: function(a1, a2, a3, a4, a5, a6, a7, a8, a9,
+                            a10, a11, a12, a13, a14, a15, a16) {
+        var matrix = this.matrix;
 
-        } else if (arguments.length === 16) {
+        // Single arg
+        if (a2 === undef ) {
+          console.log("applyMatrix 2 arg");
+          matrix.apply(a1[0], a1[1], 0,
+                       a1[2], a1[3], a1[4],
+                       0, a1[5], 0, 0, 1, 0,
+                       0, 0, 0, 1);
+        }
+        // 6 args
+        else if (a7 === undef) {
+          console.log("applyMatrix 6 arg");
+          this.checkMatrix(2);
+          matrix.apply(a1, a2, a3, 0, a4, a5, a6,
+                       0, 0,   0,   1,   0,
+                       0,   0,   0,   1);
+        }
+        // 16 args
+        else {
+          console.log("applyMatrix 16 arg");
           this.checkMatrix(3);
-          this.matrix.apply(arguments[0],
-                            arguments[1],
-                            arguments[2],
-                            arguments[3],
-                            arguments[4],
-                            arguments[5],
-                            arguments[6],
-                            arguments[7],
-                            arguments[8],
-                            arguments[9],
-                            arguments[10],
-                            arguments[11],
-                            arguments[12],
-                            arguments[13],
-                            arguments[14],
-                            arguments[15]);
+          matrix.apply(a1, a2, a3, a4, a5, a6, a7, a8, a9,
+                       a10, a11, a12, a13, a14, a15, a16);
         }
       }
     };
