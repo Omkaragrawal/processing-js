@@ -11886,8 +11886,8 @@
       vert[0] = x;
       vert[1] = y;
       vert[2] = 0;
-      vert[3] = u;
-      vert[4] = v;
+      vert[3] = u || 0;
+      vert[4] = v || 0;
 
       // fill and stroke color
       vert[5] = currentFillColor;
