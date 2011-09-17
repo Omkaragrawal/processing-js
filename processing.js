@@ -12073,11 +12073,9 @@
       var ctxMode;
       if(mode === "TRIANGLES"){
         ctxMode = curContext.TRIANGLES;
-      }
-      else if(mode === "TRIANGLE_FAN"){
+      } else if(mode === "TRIANGLE_FAN"){
         ctxMode = curContext.TRIANGLE_FAN;
-      }
-      else{
+      } else{
         ctxMode = curContext.TRIANGLE_STRIP;
       }
 
@@ -12097,7 +12095,7 @@
 
       // if we are using a texture and a tint, then overwrite the
       // contents of the color buffer with the current tint
-      if(usingTexture && curTint !== null){
+      if (usingTexture && curTint !== null){
         curTint3d(cArray);
         uniformi("usingTint3d", programObject3D, "usingTint", true);
       }
@@ -12108,21 +12106,31 @@
       // No support for lights....yet
       disableVertexAttribPointer("normal3d", programObject3D, "Normal");
 
-      var i;
+      var i,
+         tlen = tArray ? tArray.length : 0,
+         ctWidth = curTexture.width,
+         ctHeight = curTexture.height,
+         tArrayi,
+         tArrayi1;
 
-      if(usingTexture){
-        if(curTextureMode === PConstants.IMAGE){
-          for(i = 0; i < tArray.length; i += 2){
-            tArray[i] = tArray[i]/curTexture.width;
-            tArray[i+1] /= curTexture.height;
+      if (usingTexture){
+        for(i = 0; i < tlen; i += 2) {
+          if (curTextureMode === PConstants.IMAGE){
+            tArray[i] = tArray[i] / ctWidth;
+            tArray[i+1] /= ctHeight;
           }
-        }
 
-        // hack to handle when users specifies values
-        // greater than 1.0 for texture coords.
-        for(i = 0; i < tArray.length; i += 2){
-          if( tArray[i+0] > 1.0 ){ tArray[i+0] -= (tArray[i+0] - 1.0);}
-          if( tArray[i+1] > 1.0 ){ tArray[i+1] -= (tArray[i+1] - 1.0);}
+          tArrayi = tArray[i];
+          tArrayi1 = tArray[i+1];
+
+          // hack to handle when users specifies values
+          // greater than 1.0 for texture coords.
+          if( tArrayi > 1.0 ) {
+            tArray[i] -= (tArrayi - 1.0);
+          }
+          if( tArrayi1 > 1.0 ) {
+            tArray[i+1] -= (tArrayi1 - 1.0);
+          }
         }
 
         uniformi("usingTexture3d", programObject3D, "usingTexture", usingTexture);
