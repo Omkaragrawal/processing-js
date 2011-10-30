@@ -3752,10 +3752,10 @@
           if (i < pathData.length) { // don't go over boundary of array
             tmpArray = [];
             valOf = pathData[i].valueOf();
-            while (!((valOf >= 65 && valOf <= 90) ||
+            while (!((valOf >= 65 && valOf <= 90)  ||
                      (valOf >= 97 && valOf <= 100) ||
-                     (valOf >= 102 && valOf <= 122))
-                     && flag === false) { // if its NOT a letter
+                     (valOf >= 102 && valOf <= 122)) &&
+                     flag === false) { // if its NOT a letter
               if (valOf === 32) { //if its a space and the str isn't empty
                 // sometimes you get a space after the letter
                 if (str !== "") {
@@ -9033,8 +9033,8 @@
       // different behaviour than Java's. A Java-compatible implementation is
       // provided here.
       var result = [], currSubject = subject, pos;
-      while (((pos = currSubject.search(pattern)) !== -1)
-          && (result.length < (limit - 1))) {
+      while (((pos = currSubject.search(pattern)) !== -1) &&
+             (result.length < (limit - 1))) {
         var match = pattern.exec(currSubject).toString();
         result.push(currSubject.substring(0, pos));
         currSubject = currSubject.substring(pos + match.length);
